@@ -59,7 +59,7 @@ jobs:
           chmod +x ${PKG_DIR}/usr/bin/plugins/llama_swap
 
           # Copy built page (from page/dist/* not page/dist/llama-swap/*)
-          cp -R page/dist/* ${PKG_DIR}/var/www/mos-plugins/llama-swap/
+          cp -R page/dist/llama-swap/* ${PKG_DIR}/var/www/mos-plugins/llama-swap/
 
           # Copy icon
           if [ -f icon.png ]; then
