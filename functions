@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Start function
+mos_start_after_services() {
+  PLG_SETTINGS=$(cat "/boot/optional/plugins/llama-swap/settings.json" 2>/dev/null)
+  INSTALL_PATH=$(echo "$PLG_SETTINGS" | jq -r '.install_path // empty')
+  AUTO_START=$(echo "$PLG_SETTINGS" | jq -r '.auto_start // false')
+
+  if [ "$AUTO_START" == "true" ]; then
+    if [ -z "$INSTALL_PATH" ] || [ "$INSTALL_PATH" = "null" ]; then
+      echo "Install path is empty, not starting llama-swap"
+      return 0
+    else
+      if [ -f "$INSTALL_PATH/llama-swap" ]; then
+        cd "$INSTALL_PATH"
+        nohup ./llama-swap --config "$INSTALL_PATH/llama-swap.config" > /dev/null 2>&1 &
+        PID=$!
+        echo $PID > "/var/run/mos-llama-swap.pid"
+        sleep 0.5
+        if kill -0 $PID 2>/dev/null; then
+          echo "Started (PID: $PID)"
+        else
+          rm -f "/var/run/mos-llama-swap.pid"
+          echo "Failed to start llama-swap"
+          return 1
+        fi
+      fi
+    fi
+  fi
+}
