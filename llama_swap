@@ -143,7 +143,7 @@ case "$1" in
     PORT=$(get_port)
 
     cd "$INSTALL_PATH"
-    nohup ./llama-swap --config "$INSTALL_PATH/llama-swap.config" --listen ":${PORT}" > /dev/null 2>&1 &
+    nohup ./llama-swap -config "$INSTALL_PATH/llama-swap.config" -listen ":${PORT}" > /dev/null 2>&1 &
     NEWPID=$!
     echo $NEWPID > "$PID_FILE"
     sleep 0.5
@@ -186,7 +186,7 @@ case "$1" in
     if [ -n "$INSTALL_PATH" ] && [ -f "$INSTALL_PATH/llama-swap" ]; then
       PORT=$(get_port)
       cd "$INSTALL_PATH"
-      nohup ./llama-swap --config "$INSTALL_PATH/llama-swap.config" --listen ":${PORT}" > /dev/null 2>&1 &
+      nohup ./llama-swap -config "$INSTALL_PATH/llama-swap.config" -listen ":${PORT}" > /dev/null 2>&1 &
       NEWPID=$!
       echo $NEWPID > "$PID_FILE"
       sleep 0.5
