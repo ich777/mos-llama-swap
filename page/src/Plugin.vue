@@ -68,10 +68,20 @@
           </div>
           <template v-if="installPathSaved">
             <v-divider class="my-4" />
+            <v-text-field
+              v-model="settings.port"
+              :label="$t('plugin_llama_swap.port')"
+              :hint="$t('plugin_llama_swap.default_port_hint', { port: 8080 })"
+              persistent-hint
+              :rules="portRules"
+              type="number"
+              style="max-width: 200px"
+            />
             <v-switch
               v-model="settings.auto_start"
               :label="$t('plugin_llama_swap.auto_start')"
               inset color="green" hide-details
+              class="mt-2"
             />
           </template>
           <v-btn color="primary" class="mt-4" @click="saveSettings" :loading="saving">
@@ -91,6 +101,14 @@
           <v-btn color="error" rounded variant="outlined" :loading="stopping" @click="stopDaemon">
             <v-icon start>mdi-stop</v-icon>
             {{ $t('plugin_llama_swap.stop') }}
+          </v-btn>
+          <v-btn
+            v-if="running"
+            color="secondary" rounded variant="tonal"
+            :href="webuiUrl" target="_blank"
+          >
+            <v-icon start>mdi-open-in-new</v-icon>
+            {{ $t('plugin_llama_swap.open_webui') }}
           </v-btn>
         </v-card-text>
       </v-card>
@@ -209,9 +227,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, getCurrentInstance, onMounted, onUnmounted } from 'vue';
 
 const PLUGIN_NAME = 'llama-swap';
+
+const t = (key) => getCurrentInstance()?.appContext.config.globalProperties.$t(key) ?? key;
 
 const loading = ref(true);
 const saving = ref(false);
@@ -239,7 +259,22 @@ const configContent = ref('');
 const settings = reactive({
   install_path: '',
   auto_start: false,
+  port: '8080',
   version: ''
+});
+
+const DEFAULT_PORT = '8080';
+
+const portRules = [
+  (v) => {
+    const port = parseInt(v, 10);
+    return (Number.isInteger(port) && port >= 1 && port <= 65535) || t('plugin_llama_swap.port_invalid');
+  },
+];
+
+const webuiUrl = computed(() => {
+  const port = settings.port || DEFAULT_PORT;
+  return `${window.location.protocol}//${window.location.hostname}:${port}`;
 });
 
 const installPathSaved = ref(false);
@@ -291,6 +326,7 @@ const doInstall = async () => {
       body: JSON.stringify({
         install_path: installPath,
         auto_start: settings.auto_start,
+        port: normalizePort(),
         version: '',
       }),
     });
@@ -474,6 +510,11 @@ const fetchSettings = async () => {
       if (data.auto_start !== undefined) {
         settings.auto_start = data.auto_start;
       }
+      if (data.port !== undefined && data.port !== null && String(data.port) !== '' && String(data.port) !== '0') {
+        settings.port = String(data.port);
+      } else {
+        settings.port = DEFAULT_PORT;
+      }
       if (data.version) {
         currentVersion.value = data.version;
       }
@@ -631,9 +672,20 @@ const stopDaemon = async () => {
   }
 };
 
+const normalizePort = () => {
+  const port = parseInt(settings.port, 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    settings.port = DEFAULT_PORT;
+  } else {
+    settings.port = String(port);
+  }
+  return settings.port;
+};
+
 const saveSettings = async () => {
   saving.value = true;
   try {
+    const port = normalizePort();
     await fetch(`/api/v1/mos/plugins/settings/${PLUGIN_NAME}`, {
       method: 'POST',
       headers: {
@@ -643,6 +695,7 @@ const saveSettings = async () => {
       body: JSON.stringify({
         install_path: settings.install_path,
         auto_start: settings.auto_start,
+        port,
         version: currentVersion.value,
       }),
     });

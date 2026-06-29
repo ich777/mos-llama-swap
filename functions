@@ -5,6 +5,10 @@ mos_start_after_services() {
   PLG_SETTINGS=$(cat "/boot/optional/plugins/llama-swap/settings.json" 2>/dev/null)
   INSTALL_PATH=$(echo "$PLG_SETTINGS" | jq -r '.install_path // empty')
   AUTO_START=$(echo "$PLG_SETTINGS" | jq -r '.auto_start // false')
+  PORT=$(echo "$PLG_SETTINGS" | jq -r '.port // empty')
+  if [ -z "$PORT" ] || [ "$PORT" = "null" ] || [ "$PORT" = "0" ]; then
+    PORT="8080"
+  fi
 
   if [ "$AUTO_START" == "true" ]; then
     if [ -z "$INSTALL_PATH" ] || [ "$INSTALL_PATH" = "null" ]; then
@@ -13,7 +17,7 @@ mos_start_after_services() {
     else
       if [ -f "$INSTALL_PATH/llama-swap" ]; then
         cd "$INSTALL_PATH"
-        nohup ./llama-swap --config "$INSTALL_PATH/llama-swap.config" > /dev/null 2>&1 &
+        nohup ./llama-swap --config "$INSTALL_PATH/llama-swap.config" --listen ":${PORT}" > /dev/null 2>&1 &
         PID=$!
         echo $PID > "/var/run/mos-llama-swap.pid"
         sleep 0.5
