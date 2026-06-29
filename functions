@@ -17,7 +17,7 @@ mos_start_after_services() {
     else
       if [ -f "$INSTALL_PATH/llama-swap" ]; then
         cd "$INSTALL_PATH"
-        nohup ./llama-swap --config "$INSTALL_PATH/llama-swap.config" --listen ":${PORT}" > /dev/null 2>&1 &
+        nohup ./llama-swap -config "$INSTALL_PATH/llama-swap.config" -listen ":${PORT}" > /dev/null 2>&1 &
         PID=$!
         echo $PID > "/var/run/mos-llama-swap.pid"
         sleep 0.5
