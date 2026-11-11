@@ -48,7 +48,7 @@ export default defineConfig({
         './Plugin': './src/Plugin.vue',
         './Locales': './src/locales/index.js',
       },
-      shared: ['vue'],
+      shared: ['vue', 'vuetify'],
     }),
     generateManifest(),
   ],

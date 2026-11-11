@@ -123,13 +123,8 @@
           <div v-if="!configSaved" class="text-subtitle-2 text-warning mb-3">
             {{ $t('plugin_llama_swap.config_not_saved') }}
           </div>
-          <v-textarea
-            v-model="configContent"
-            :loading="loadingConfig"
-            :rows="15"
-            hide-details
-            style="font-family: monospace"
-          />
+          <v-progress-circular v-if="loadingConfig" size="20" indeterminate color="secondary" class="mb-2" />
+          <div ref="configEditor" class="config-editor"></div>
           <v-btn color="primary" class="mt-4" @click="confirmSaveConfig" :loading="savingConfig">
             <v-icon start>mdi-content-save</v-icon>
             {{ $t('plugin_llama_swap.save_config') }}
@@ -227,7 +222,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, getCurrentInstance, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, getCurrentInstance, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { useTheme } from 'vuetify';
+import { EditorView, basicSetup } from 'codemirror';
+import { EditorState } from '@codemirror/state';
+import { yaml } from '@codemirror/lang-yaml';
+import { oneDark } from '@codemirror/theme-one-dark';
 
 const PLUGIN_NAME = 'llama-swap';
 
@@ -281,6 +281,65 @@ const installPathSaved = ref(false);
 const recommendedPath = ref('');
 const configSaved = ref(true);
 const restartDialog = ref(false);
+
+const configEditor = ref(null);
+let configEditorView = null;
+const theme = useTheme();
+
+const createConfigEditor = () => {
+  if (!configEditor.value || configEditorView) return;
+
+  const extensions = [
+    basicSetup,
+    yaml(),
+    EditorView.updateListener.of((update) => {
+      if (update.docChanged) {
+        configContent.value = update.state.doc.toString();
+      }
+    }),
+    EditorView.lineWrapping,
+  ];
+  if (theme.global.current.value.dark) {
+    extensions.push(oneDark);
+  }
+
+  configEditorView = new EditorView({
+    state: EditorState.create({ doc: configContent.value || '', extensions }),
+    parent: configEditor.value,
+  });
+};
+
+const destroyConfigEditor = () => {
+  if (configEditorView) {
+    configEditorView.destroy();
+    configEditorView = null;
+  }
+};
+
+watch(configContent, (newValue) => {
+  if (!configEditorView) return;
+  const current = configEditorView.state.doc.toString();
+  if (newValue !== current) {
+    configEditorView.dispatch({
+      changes: { from: 0, to: current.length, insert: newValue || '' },
+    });
+  }
+});
+
+watch(installPathSaved, async (saved) => {
+  if (saved) {
+    await nextTick();
+    createConfigEditor();
+  } else {
+    destroyConfigEditor();
+  }
+});
+
+watch(() => theme.global.current.value.dark, () => {
+  if (!configEditor.value) return;
+  destroyConfigEditor();
+  createConfigEditor();
+});
 
 const getAuthHeaders = () => ({
   Authorization: 'Bearer ' + localStorage.getItem('authToken'),
@@ -814,5 +873,28 @@ onUnmounted(() => {
   if (statusInterval.value) {
     clearInterval(statusInterval.value);
   }
+  destroyConfigEditor();
 });
 </script>
+
+<style scoped>
+.config-editor {
+  position: relative;
+  width: 100%;
+  height: calc(35 * 1.6 * 14px);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
+}
+
+.config-editor :deep(.cm-editor) {
+  height: 100%;
+}
+
+.config-editor :deep(.cm-scroller) {
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+</style>
