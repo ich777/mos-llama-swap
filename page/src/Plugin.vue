@@ -222,7 +222,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, getCurrentInstance, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, reactive, computed, getCurrentInstance, onMounted, onUnmounted, watch } from 'vue';
 import { useTheme } from 'vuetify';
 import { EditorView, basicSetup } from 'codemirror';
 import { EditorState } from '@codemirror/state';
@@ -326,13 +326,12 @@ watch(configContent, (newValue) => {
   }
 });
 
-watch(installPathSaved, async (saved) => {
-  if (saved) {
-    await nextTick();
-    createConfigEditor();
-  } else {
+watch([installPathSaved, configEditor], ([saved, el]) => {
+  if (!saved || !el) {
     destroyConfigEditor();
+    return;
   }
+  createConfigEditor();
 });
 
 watch(() => theme.global.current.value.dark, () => {
